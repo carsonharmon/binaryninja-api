@@ -3170,18 +3170,21 @@ class BinaryView(object):
 			return None
 		return DataVariable(var.address, types.Type(var.type, platform = self.platform, confidence = var.typeConfidence), var.autoDiscovered, self)
 
-	def get_functions_containing(self, addr):
+	def get_functions_containing(self, addr, plat=None):
 		"""
 		``get_functions_containing`` returns a list of functions which contain the given address.
 
 		:param int addr: virtual address to query.
 		:rtype: list of Function objects
 		"""
-		basic_blocks = self.get_basic_blocks_at(addr)
-
+		count = ctypes.c_ulonglong(0)
+		funcs = core.BNGetAnalysisFunctionsContainingAddress(self.handle, addr, count)
 		result = []
-		for block in basic_blocks:
-			result.append(block.function)
+		for i in range(0, count.value):
+			result.append(binaryninja.function.Function(self, core.BNNewFunctionReference(funcs[i])))
+		core.BNFreeFunctionList(funcs, count.value)
+		if not plat is None:
+			result = [func for func in result in func.platform == plat]
 		return result
 
 	def get_function_at(self, addr, plat=None):
@@ -3453,7 +3456,7 @@ class BinaryView(object):
 		"""
 		count = ctypes.c_ulonglong(0)
 		name = types.QualifiedName(name)._get_core_struct()
-		refs = core.BNGetCodeReferencesForType(self.handle, name, offset, count)
+		refs = core.BNGetCodeReferencesForTypeField(self.handle, name, offset, count)
 
 		result = []
 		for i in range(0, count.value):
@@ -3531,7 +3534,7 @@ class BinaryView(object):
 		``get_type_refs_for_type`` returns a list of TypeReferenceSource objects (xrefs or cross-references) that reference the provided QualifiedName.
 
 		:param QualifiedName name: name of type to query for references
-		:return: List of References for the given type
+		:return: List of references for the given type
 		:rtype: list(TypeReferenceSource)
 		:Example:
 
@@ -3558,7 +3561,7 @@ class BinaryView(object):
 
 		:param QualifiedName name: name of type to query for references
 		:param int offset: offset of the field, relative to the type
-		:return: List of References for the given type
+		:return: List of references for the given type
 		:rtype: list(TypeReferenceSource)
 		:Example:
 
@@ -3578,6 +3581,65 @@ class BinaryView(object):
 		core.BNFreeTypeReferences(refs, count.value)
 		return result
 
+	def get_code_refs_for_type_from(self, addr, func = None, arch = None, length = None):
+		"""
+		``get_code_refs_for_type_from`` returns a list of types referenced by code in the function ``func``,
+		of the architecture ``arch``, and at the address ``addr``. If no function is specified, references from
+		all functions and containing the address will be returned. If no architecture is specified, the
+		architecture of the function will be used.
+
+		:param int addr: virtual address to query for references
+		:param int length: optional length of query
+		:return: list of references
+		:rtype: list(TypeReferenceSource)
+		"""
+		result = []
+		funcs = self.get_functions_containing(addr) if func is None else [func]
+		if not funcs:
+			return []
+		for src_func in funcs:
+			src_arch = src_func.arch if arch is None else arch
+			ref_src = core.BNReferenceSource(src_func.handle, src_arch.handle, addr)
+			count = ctypes.c_ulonglong(0)
+			if length is None:
+				refs = core.BNGetCodeReferencesForTypeFrom(self.handle, ref_src, count)
+			else:
+				refs = core.BNGetCodeReferencesForTypeFromInRange(self.handle, ref_src, length, count)
+			for i in range(0, count.value):
+				type_field = types.TypeReferenceSource(types.QualifiedName._from_core_struct(refs[i].name), refs[i].offset, refs[i].type)
+				result.append(type_field)
+			core.BNFreeTypeReferences(refs, count.value)
+		return result
+
+	def get_code_refs_for_type_fields_from(self, addr, func = None, arch = None, length = None):
+		"""
+		``get_code_refs_for_type_fields_from`` returns a list of type fields referenced by code in the function ``func``,
+		of the architecture ``arch``, and at the address ``addr``. If no function is specified, references from
+		all functions and containing the address will be returned. If no architecture is specified, the
+		architecture of the function will be used.
+
+		:param int addr: virtual address to query for references
+		:param int length: optional length of query
+		:return: list of references
+		:rtype: list(TypeReferenceSource)
+		"""
+		result = []
+		funcs = self.get_functions_containing(addr) if func is None else [func]
+		if not funcs:
+			return []
+		for src_func in funcs:
+			src_arch = src_func.arch if arch is None else arch
+			ref_src = core.BNReferenceSource(src_func.handle, src_arch.handle, addr)
+			count = ctypes.c_ulonglong(0)
+			if length is None:
+				refs = core.BNGetCodeReferencesForTypeFieldsFrom(self.handle, ref_src, count)
+			else:
+				refs = core.BNGetCodeReferencesForTypeFieldsFromInRange(self.handle, ref_src, length, count)
+			for i in range(0, count.value):
+				type_field = types.TypeReferenceSource(types.QualifiedName._from_core_struct(refs[i].name), refs[i].offset, refs[i].type)
+				result.append(type_field)
+			core.BNFreeTypeReferences(refs, count.value)
+		return result
 
 	def add_user_data_ref(self, from_addr, to_addr):
 		"""
@@ -5607,7 +5669,7 @@ class BinaryView(object):
 		For annotating code, it is recommended to use comments attached to functions rather than address
 		comments attached to the BinaryView. On the other hand, BinaryView comments can be attached to data
 		whereas function comments cannot.
-		To create a function-level comment, use :func:`~binaryninja.function.Function.add_user_code_ref`.
+		To create a function-level comment, use :func:`~binaryninja.function.Function.set_comment_at`.
 		"""
 		count = ctypes.c_ulonglong()
 		addrs = core.BNGetGlobalCommentedAddresses(self.handle, count)

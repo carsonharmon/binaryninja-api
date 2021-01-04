@@ -198,6 +198,8 @@ public:
 
 	static void registerActions();
 
+	virtual ArchitectureRef getOrAskForArchitecture();
+
 protected:
 	virtual void resizeEvent(QResizeEvent* event) override;
 	virtual void paintEvent(QPaintEvent* event) override;
@@ -224,6 +226,7 @@ private Q_SLOTS:
 	void createStructure();
 	void createUnion();
 	void setStructureSize();
+	void addUserXref();
 	void updateLineNumberAreaWidth(size_t lineCount);
 };
 

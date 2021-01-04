@@ -1683,6 +1683,21 @@ vector<Ref<Function>> BinaryView::GetAnalysisFunctionsForAddress(uint64_t addr)
 }
 
 
+vector<Ref<Function>> BinaryView::GetAnalysisFunctionsContainingAddress(uint64_t addr)
+{
+	size_t count;
+	BNFunction** list = BNGetAnalysisFunctionsContainingAddress(m_object, addr, &count);
+
+	vector<Ref<Function>> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; i++)
+		result.push_back(new Function(BNNewFunctionReference(list[i])));
+
+	BNFreeFunctionList(list, count);
+	return result;
+}
+
+
 Ref<Function> BinaryView::GetAnalysisEntryPoint()
 {
 	BNFunction* func = BNGetAnalysisEntryPoint(m_object);
@@ -1950,6 +1965,93 @@ vector<TypeReferenceSource> BinaryView::GetTypeReferencesForTypeField(const Qual
 	BNQualifiedName nameObj = type.GetAPIObject();
 	BNTypeReferenceSource* refs = BNGetTypeReferencesForTypeField(m_object, &nameObj, offset, &count);
 	QualifiedName::FreeAPIObject(&nameObj);
+
+	vector<TypeReferenceSource> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; i++)
+	{
+		TypeReferenceSource src;
+		src.name = QualifiedName::FromAPIObject(&refs[i].name);
+		src.offset = refs[i].offset;
+		src.type = refs[i].type;
+		result.push_back(src);
+	}
+
+	BNFreeTypeReferences(refs, count);
+	return result;
+}
+
+
+vector<TypeReferenceSource> BinaryView::GetCodeReferencesForTypeFrom(ReferenceSource src)
+{
+	size_t count;
+	BNReferenceSource _src{ src.func->m_object, src.arch->m_object, src.addr };
+	BNTypeReferenceSource* refs = BNGetCodeReferencesForTypeFrom(m_object, &_src, &count);
+
+	vector<TypeReferenceSource> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; i++)
+	{
+		TypeReferenceSource src;
+		src.name = QualifiedName::FromAPIObject(&refs[i].name);
+		src.offset = refs[i].offset;
+		src.type = refs[i].type;
+		result.push_back(src);
+	}
+
+	BNFreeTypeReferences(refs, count);
+	return result;
+}
+
+
+vector<TypeReferenceSource> BinaryView::GetCodeReferencesForTypeFrom(ReferenceSource src, uint64_t len)
+{
+	size_t count;
+	BNReferenceSource _src{ src.func->m_object, src.arch->m_object, src.addr };
+	BNTypeReferenceSource* refs = BNGetCodeReferencesForTypeFromInRange(m_object, &_src, len, &count);
+
+	vector<TypeReferenceSource> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; i++)
+	{
+		TypeReferenceSource src;
+		src.name = QualifiedName::FromAPIObject(&refs[i].name);
+		src.offset = refs[i].offset;
+		src.type = refs[i].type;
+		result.push_back(src);
+	}
+
+	BNFreeTypeReferences(refs, count);
+	return result;
+}
+
+vector<TypeReferenceSource> BinaryView::GetCodeReferencesForTypeFieldFrom(ReferenceSource src)
+{
+	size_t count;
+	BNReferenceSource _src{ src.func->m_object, src.arch->m_object, src.addr };
+	BNTypeReferenceSource* refs = BNGetCodeReferencesForTypeFieldsFrom(m_object, &_src, &count);
+
+	vector<TypeReferenceSource> result;
+	result.reserve(count);
+	for (size_t i = 0; i < count; i++)
+	{
+		TypeReferenceSource src;
+		src.name = QualifiedName::FromAPIObject(&refs[i].name);
+		src.offset = refs[i].offset;
+		src.type = refs[i].type;
+		result.push_back(src);
+	}
+
+	BNFreeTypeReferences(refs, count);
+	return result;
+}
+
+
+vector<TypeReferenceSource> BinaryView::GetCodeReferencesForTypeFieldFrom(ReferenceSource src, uint64_t len)
+{
+	size_t count;
+	BNReferenceSource _src{ src.func->m_object, src.arch->m_object, src.addr };
+	BNTypeReferenceSource* refs = BNGetCodeReferencesForTypeFieldsFromInRange(m_object, &_src, len, &count);
 
 	vector<TypeReferenceSource> result;
 	result.reserve(count);

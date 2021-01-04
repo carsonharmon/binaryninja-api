@@ -1601,6 +1601,7 @@ __attribute__ ((format (printf, 1, 2)))
 		Ref<Function> GetAnalysisFunction(Platform* platform, uint64_t addr);
 		Ref<Function> GetRecentAnalysisFunctionForAddress(uint64_t addr);
 		std::vector<Ref<Function>> GetAnalysisFunctionsForAddress(uint64_t addr);
+		std::vector<Ref<Function>> GetAnalysisFunctionsContainingAddress(uint64_t addr);
 		Ref<Function> GetAnalysisEntryPoint();
 
 		Ref<BasicBlock> GetRecentBasicBlockForAddress(uint64_t addr);
@@ -1628,6 +1629,11 @@ __attribute__ ((format (printf, 1, 2)))
 		std::vector<ReferenceSource> GetCodeReferencesForTypeField(const QualifiedName& type, uint64_t offset);
 		std::vector<uint64_t> GetDataReferencesForTypeField(const QualifiedName& type, uint64_t offset);
 		std::vector<TypeReferenceSource> GetTypeReferencesForTypeField(const QualifiedName& type, uint64_t offset);
+
+		std::vector<TypeReferenceSource> GetCodeReferencesForTypeFrom(ReferenceSource src);
+		std::vector<TypeReferenceSource> GetCodeReferencesForTypeFrom(ReferenceSource src, uint64_t len);
+		std::vector<TypeReferenceSource> GetCodeReferencesForTypeFieldFrom(ReferenceSource src);
+		std::vector<TypeReferenceSource> GetCodeReferencesForTypeFieldFrom(ReferenceSource src, uint64_t len);
 
 		std::vector<uint64_t> GetCallees(ReferenceSource addr);
 		std::vector<ReferenceSource> GetCallers(uint64_t addr);
@@ -3084,6 +3090,10 @@ __attribute__ ((format (printf, 1, 2)))
 
 		void AddUserCodeReference(Architecture* fromArch, uint64_t fromAddr, uint64_t toAddr);
 		void RemoveUserCodeReference(Architecture* fromArch, uint64_t fromAddr, uint64_t toAddr);
+		void AddUserTypeReference(Architecture* fromArch, uint64_t fromAddr, const QualifiedName& name);
+		void RemoveUserTypeReference(Architecture* fromArch, uint64_t fromAddr, const QualifiedName& name);
+		void AddUserTypeFieldReference(Architecture* fromArch, uint64_t fromAddr, const QualifiedName& name, uint64_t offset);
+		void RemoveUserTypeFieldReference(Architecture* fromArch, uint64_t fromAddr, const QualifiedName& name, uint64_t offset);
 
 		Ref<LowLevelILFunction> GetLowLevelIL() const;
 		Ref<LowLevelILFunction> GetLowLevelILIfAvailable() const;
